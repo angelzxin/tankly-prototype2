@@ -13,9 +13,9 @@ import {
   IconSpeaker,
   TanklyMark,
 } from "./components/icons";
-import { googleMapsDirectionsUrl, recommendFuelStop } from "./lib/decisionEngine";
+import { googleMapsDirectionsUrl, recommendFuelStop, recommendationForStop } from "./lib/decisionEngine";
 import { getDataSource, getNearbyStations, type GeoPoint } from "./lib/stations";
-import type { BusinessInputs, Station, VehicleInputs } from "./types";
+import type { BusinessInputs, Station, TripInputs, VehicleInputs } from "./types";
 
 type Screen = "map" | "forecast" | "nearby" | "alert" | "vehicle";
 
@@ -37,14 +37,26 @@ const defaultOrigin: GeoPoint = {
   longitude: -74.7429,
 };
 
+const defaultTrip: TripInputs = {
+  destinationName: "Philadelphia, PA",
+  destinationLatitude: 39.9526,
+  destinationLongitude: -75.1652,
+  remainingMiles: 18.2,
+  remainingMinutes: 34,
+  trafficMultiplier: 1.15,
+  expectedFuturePricePerGallon: 3.79,
+};
+
 export default function App() {
   const [stations, setStations] = useState<Station[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<VehicleInputs>(defaultVehicle);
   const [business, setBusiness] = useState<BusinessInputs>(defaultBusiness);
   const [origin, setOrigin] = useState<GeoPoint>(defaultOrigin);
-  const [screen, setScreen] = useState<Screen>("forecast");
+  const [trip, setTrip] = useState<TripInputs>(defaultTrip);
+  const [screen, setScreen] = useState<Screen>("map");
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [opportunityDismissed, setOpportunityDismissed] = useState(false);
   const dataSource = getDataSource();
 
   useEffect(() => {
@@ -73,18 +85,50 @@ export default function App() {
   }, [origin.latitude, origin.longitude, dataSource]);
 
   const decision = useMemo(
-    () => recommendFuelStop(stations, vehicle, business),
-    [stations, vehicle, business],
+    () => recommendFuelStop(stations, vehicle, business, trip),
+    [stations, vehicle, business, trip],
   );
+
+  useEffect(() => {
+    setOpportunityDismissed(false);
+    if (decision.bestStation) {
+      setSelectedStationId(decision.bestStation.station.id);
+    }
+  }, [
+    decision.bestStation?.station.id,
+    vehicle.currentFuelPercent,
+    vehicle.mpg,
+    vehicle.tankCapacityGallons,
+    business.loadedLaborCostPerHour,
+    business.vehicleCostPerMile,
+    business.minimumSavingsThreshold,
+    trip.remainingMiles,
+    trip.remainingMinutes,
+    trip.trafficMultiplier,
+    trip.expectedFuturePricePerGallon,
+  ]);
 
   const selectedEvaluation =
     decision.evaluations.find((item) => item.station.id === selectedStationId) ??
     decision.bestStation;
 
-  const fuelRangeMiles = (vehicle.currentFuelPercent / 100) * vehicle.tankCapacityGallons * vehicle.mpg;
+  const fuelRangeMiles =
+    (vehicle.currentFuelPercent / 100) * vehicle.tankCapacityGallons * vehicle.mpg;
+
+  const selectedRecommendation = recommendationForStop(
+    selectedEvaluation,
+    vehicle,
+    business,
+  );
+
+  const showDrivingAlert =
+    Boolean(selectedEvaluation) &&
+    (screen === "alert" ||
+      (screen === "map" && decision.recommendation === "ADD_STOP" && !opportunityDismissed));
 
   function openStation(stationId: string) {
     setSelectedStationId(stationId);
+    setOpportunityDismissed(false);
     setScreen("alert");
   }
 
@@ -93,10 +137,17 @@ export default function App() {
       return;
     }
     window.open(
-      googleMapsDirectionsUrl(
-        selectedEvaluation.station.latitude,
-        selectedEvaluation.station.longitude,
-      ),
+      googleMapsDirectionsUrl({
+        origin,
+        station: {
+          latitude: selectedEvaluation.station.latitude,
+          longitude: selectedEvaluation.station.longitude,
+        },
+        destination: {
+          latitude: trip.destinationLatitude,
+          longitude: trip.destinationLongitude,
+        },
+      }),
       "_blank",
       "noopener,noreferrer",
     );
@@ -112,7 +163,7 @@ export default function App() {
             type="button"
             className="logo-btn"
             aria-label="Tankly home"
-            onClick={() => setScreen("forecast")}
+            onClick={() => setScreen("map")}
           >
             <TanklyMark />
           </button>
@@ -121,7 +172,10 @@ export default function App() {
               type="button"
               aria-label="Map"
               className={nav === "map" ? "active" : ""}
-              onClick={() => setScreen("map")}
+              onClick={() => {
+                setOpportunityDismissed(false);
+                setScreen("map");
+              }}
             >
               <IconMap />
             </button>
@@ -176,27 +230,19 @@ export default function App() {
           {screen === "nearby" && (
             <NearbyFuelCard
               evaluations={decision.evaluations}
-              waitingCost={decision.expectedCostOfWaiting}
               onClose={() => setScreen("map")}
               onSelect={openStation}
             />
           )}
-          {screen === "alert" && selectedEvaluation && (
+          {showDrivingAlert && selectedEvaluation && (
             <SmartFuelAlert
               evaluation={selectedEvaluation}
-              waitingCost={decision.expectedCostOfWaiting}
-              expectedSavings={
-                decision.expectedCostOfWaiting - selectedEvaluation.expectedStopCost
-              }
-              mpg={vehicle.mpg}
-              recommendation={
-                vehicle.currentFuelPercent < vehicle.emergencyFuelPercent ||
-                decision.expectedCostOfWaiting - selectedEvaluation.expectedStopCost >=
-                  business.minimumSavingsThreshold
-                  ? "ADD_STOP"
-                  : "DO_NOT_ADD_STOP"
-              }
-              onClose={() => setScreen("nearby")}
+              prediction={decision.prediction}
+              recommendation={selectedRecommendation}
+              onClose={() => {
+                setOpportunityDismissed(true);
+                setScreen("map");
+              }}
               onAddStop={handleAddStop}
             />
           )}
@@ -204,9 +250,11 @@ export default function App() {
             <VehicleCard
               vehicle={vehicle}
               business={business}
+              trip={trip}
               origin={origin}
               onVehicleChange={setVehicle}
               onBusinessChange={setBusiness}
+              onTripChange={setTrip}
               onOriginChange={setOrigin}
               onClose={() => setScreen("map")}
             />
@@ -219,8 +267,10 @@ export default function App() {
               <IconCar />
             </span>
             <div>
-              <div className="trip-label">Current trip</div>
-              <strong>34 min · 18.2 mi</strong>
+              <div className="trip-label">{trip.destinationName}</div>
+              <strong>
+                {trip.remainingMinutes.toFixed(0)} min · {trip.remainingMiles.toFixed(1)} mi
+              </strong>
             </div>
           </div>
         </div>

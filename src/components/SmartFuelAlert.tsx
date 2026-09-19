@@ -1,12 +1,10 @@
 import { IconArrowUp, IconClose } from "./icons";
-import type { StationEvaluation } from "../types";
+import type { FuelPrediction, Recommendation, StationEvaluation } from "../types";
 
 type Props = {
   evaluation: StationEvaluation;
-  waitingCost: number;
-  expectedSavings: number;
-  mpg: number;
-  recommendation: "ADD_STOP" | "DO_NOT_ADD_STOP";
+  prediction: FuelPrediction;
+  recommendation: Recommendation;
   onClose: () => void;
   onAddStop: () => void;
 };
@@ -18,20 +16,14 @@ function money(value: number) {
 
 export function SmartFuelAlert({
   evaluation,
-  waitingCost,
-  expectedSavings,
-  mpg,
+  prediction,
   recommendation,
   onClose,
   onAddStop,
 }: Props) {
-  const extraFuelCost =
-    mpg > 0
-      ? (evaluation.station.detourMiles / mpg) * evaluation.predictedPricePerGallon
-      : evaluation.vehicleDetourCost;
-  const grossSave = waitingCost - evaluation.fuelCost;
-  const netSave = waitingCost - evaluation.expectedStopCost;
   const firstName = evaluation.station.name.split("—")[0].trim();
+  const chancePercent = Math.round(prediction.probabilityNeedFuelSoon * 100);
+  const milesWindow = Math.max(1, Math.round(prediction.milesUntilLikelyRefuel));
 
   return (
     <article className="card card-alert">
@@ -51,8 +43,10 @@ export function SmartFuelAlert({
         <h1>Fill up at {firstName}</h1>
         <p className="sub">
           {recommendation === "ADD_STOP"
-            ? "Best price on your route. Prices are likely to rise tomorrow."
-            : "A stop is optional. Savings are below your minimum threshold."}
+            ? "Best price on your route. Tankly recommends adding this stop."
+            : "A stop is optional. Expected net value is below your minimum threshold."}{" "}
+          Tankly predicts a {chancePercent}% chance you'll need fuel within the next {milesWindow}{" "}
+          miles.
         </p>
         <button type="button" className="add-stop" onClick={onAddStop}>
           <span>
@@ -64,22 +58,29 @@ export function SmartFuelAlert({
       </div>
       <div className="alert-side">
         <div className="kicker kicker-muted">You'll save</div>
-        <div className="save-hero">{money(expectedSavings > 0 ? expectedSavings : grossSave)}</div>
+        <div className="save-hero">{money(evaluation.expectedNetValue)}</div>
         <div className="alert-rows">
           <div>
-            <span>Price</span>
-            <strong>${evaluation.predictedPricePerGallon.toFixed(2)} / gal</strong>
+            <span>Fuel price advantage</span>
+            <strong>{money(evaluation.fuelPriceSavings)}</strong>
           </div>
           <div>
-            <span>Extra fuel</span>
-            <strong>-{money(extraFuelCost)}</strong>
+            <span>Driver time cost</span>
+            <strong>-{money(evaluation.driverTimeCost)}</strong>
           </div>
           <div>
-            <span>Net savings</span>
-            <strong className="net">{money(netSave)}</strong>
+            <span>Vehicle detour cost</span>
+            <strong>-{money(evaluation.vehicleDetourCost)}</strong>
+          </div>
+          <div>
+            <span>Expected net value</span>
+            <strong className="net">{money(evaluation.expectedNetValue)}</strong>
           </div>
         </div>
-        <p className="alert-note">Based on your vehicle costs and current route.</p>
+        <p className="alert-note">
+          Waiting risk adjustment {money(evaluation.waitingRiskAdjustment)}. Based on predicted
+          fuel need and current route.
+        </p>
       </div>
     </article>
   );

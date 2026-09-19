@@ -23,13 +23,34 @@ export type BusinessInputs = {
   minimumSavingsThreshold: number;
 };
 
+export type TripInputs = {
+  destinationName: string;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  remainingMiles: number;
+  remainingMinutes: number;
+  trafficMultiplier: number;
+  expectedFuturePricePerGallon: number;
+};
+
+export type FuelPrediction = {
+  probabilityNeedFuelSoon: number;
+  milesUntilLikelyRefuel: number;
+  estimatedGallonsNeeded: number;
+  expectedFuturePricePerGallon: number;
+  futureOpportunityRisk: number;
+};
+
 export type StationEvaluation = {
   station: Station;
   predictedPricePerGallon: number;
   gallonsNeeded: number;
   fuelCost: number;
+  fuelPriceSavings: number;
   driverTimeCost: number;
   vehicleDetourCost: number;
+  waitingRiskAdjustment: number;
+  expectedNetValue: number;
   expectedStopCost: number;
 };
 
@@ -47,4 +68,5 @@ export type DecisionResult = {
   expectedCostOfWaiting: number;
   bestStation: StationEvaluation | null;
   evaluations: StationEvaluation[];
+  prediction: FuelPrediction;
 };

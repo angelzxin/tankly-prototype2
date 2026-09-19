@@ -3,19 +3,17 @@ import type { StationEvaluation } from "../types";
 
 type Props = {
   evaluations: StationEvaluation[];
-  waitingCost: number;
   onClose: () => void;
   onSelect: (stationId: string) => void;
 };
 
 function money(value: number) {
-  return `$${Math.abs(value).toFixed(2)}`;
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toFixed(2)}`;
 }
 
-export function NearbyFuelCard({ evaluations, waitingCost, onClose, onSelect }: Props) {
-  const ranked = [...evaluations].sort(
-    (a, b) => a.expectedStopCost - b.expectedStopCost,
-  );
+export function NearbyFuelCard({ evaluations, onClose, onSelect }: Props) {
+  const ranked = [...evaluations].sort((a, b) => b.expectedNetValue - a.expectedNetValue);
 
   return (
     <article className="card card-nearby">
@@ -29,33 +27,30 @@ export function NearbyFuelCard({ evaluations, waitingCost, onClose, onSelect }: 
         </button>
       </div>
       <div className="station-list">
-        {ranked.map((evaluation, index) => {
-          const savings = waitingCost - evaluation.expectedStopCost;
-          return (
-            <button
-              key={evaluation.station.id}
-              type="button"
-              className="station-row"
-              onClick={() => onSelect(evaluation.station.id)}
-            >
-              <span className={`pump ${index === 0 ? "best" : ""}`}>
-                <IconPump />
-              </span>
-              <span className="station-copy">
-                <strong>
-                  {evaluation.station.name.split("—")[0].trim()}{" "}
-                  <span>
-                    · {evaluation.station.detourMinutes.toFixed(0)} min ·{" "}
-                    {evaluation.station.detourMiles.toFixed(1)} mi
-                  </span>
-                </strong>
-                <em>Save {money(savings)}</em>
-              </span>
-              <b>${evaluation.predictedPricePerGallon.toFixed(2)}</b>
-              <IconChevron />
-            </button>
-          );
-        })}
+        {ranked.map((evaluation, index) => (
+          <button
+            key={evaluation.station.id}
+            type="button"
+            className="station-row"
+            onClick={() => onSelect(evaluation.station.id)}
+          >
+            <span className={`pump ${index === 0 ? "best" : ""}`}>
+              <IconPump />
+            </span>
+            <span className="station-copy">
+              <strong>
+                {evaluation.station.name.split("—")[0].trim()}{" "}
+                <span>
+                  · {evaluation.station.detourMinutes.toFixed(0)} min ·{" "}
+                  {evaluation.station.detourMiles.toFixed(1)} mi
+                </span>
+              </strong>
+              <em>Save {money(evaluation.expectedNetValue)}</em>
+            </span>
+            <b>${evaluation.predictedPricePerGallon.toFixed(2)}</b>
+            <IconChevron />
+          </button>
+        ))}
       </div>
     </article>
   );

@@ -1,10 +1,13 @@
-import { estimateCostOfWaiting } from "./estimateCostOfWaiting";
+import { predictFuelNeed } from "./predictionEngine";
 import { predictFuelPrice } from "./predictFuelPrice";
+import type { GeoPoint } from "./geo";
 import type {
   BusinessInputs,
   DecisionResult,
+  FuelPrediction,
   Station,
   StationEvaluation,
+  TripInputs,
   VehicleInputs,
 } from "../types";
 
@@ -18,22 +21,34 @@ export function gallonsNeededForFill(
 
 export function evaluateStation(
   station: Station,
-  gallonsNeeded: number,
+  prediction: FuelPrediction,
   business: BusinessInputs,
 ): StationEvaluation {
   const predictedPricePerGallon = predictFuelPrice(station);
+  const gallonsNeeded = prediction.estimatedGallonsNeeded;
   const fuelCost = predictedPricePerGallon * gallonsNeeded;
+  const fuelPriceSavings =
+    (prediction.expectedFuturePricePerGallon - predictedPricePerGallon) * gallonsNeeded;
   const driverTimeCost =
     (station.detourMinutes / 60) * business.loadedLaborCostPerHour;
   const vehicleDetourCost = station.detourMiles * business.vehicleCostPerMile;
+  const waitingRiskAdjustment =
+    prediction.futureOpportunityRisk *
+    gallonsNeeded *
+    Math.max(0, prediction.expectedFuturePricePerGallon - predictedPricePerGallon);
+  const expectedNetValue =
+    fuelPriceSavings - driverTimeCost - vehicleDetourCost + waitingRiskAdjustment;
 
   return {
     station,
     predictedPricePerGallon,
     gallonsNeeded,
     fuelCost,
+    fuelPriceSavings,
     driverTimeCost,
     vehicleDetourCost,
+    waitingRiskAdjustment,
+    expectedNetValue,
     expectedStopCost: fuelCost + driverTimeCost + vehicleDetourCost,
   };
 }
@@ -42,36 +57,24 @@ export function recommendFuelStop(
   stations: Station[],
   vehicle: VehicleInputs,
   business: BusinessInputs,
+  trip: TripInputs,
 ): DecisionResult {
-  const gallonsNeeded = gallonsNeededForFill(
-    vehicle.tankCapacityGallons,
-    vehicle.currentFuelPercent,
-  );
-
+  const prediction = predictFuelNeed(vehicle, trip, stations);
   const evaluations = stations.map((station) =>
-    evaluateStation(station, gallonsNeeded, business),
+    evaluateStation(station, prediction, business),
   );
 
   const bestStation =
     evaluations.length === 0
       ? null
       : evaluations.reduce((best, current) =>
-          current.expectedStopCost < best.expectedStopCost ? current : best,
+          current.expectedNetValue > best.expectedNetValue ? current : best,
         );
 
-  const expectedCostOfWaiting = estimateCostOfWaiting({
-    gallonsNeeded,
-    evaluations,
-  });
-
-  const bestExpectedStopCost = bestStation?.expectedStopCost ?? 0;
-  const expectedSavings = expectedCostOfWaiting - bestExpectedStopCost;
-
-  const isEmergency = vehicle.currentFuelPercent < vehicle.emergencyFuelPercent;
-  const recommendation: DecisionResult["recommendation"] =
-    isEmergency || expectedSavings >= business.minimumSavingsThreshold
-      ? "ADD_STOP"
-      : "DO_NOT_ADD_STOP";
+  const expectedCostOfWaiting =
+    prediction.expectedFuturePricePerGallon * prediction.estimatedGallonsNeeded;
+  const expectedSavings = bestStation?.expectedNetValue ?? 0;
+  const recommendation = recommendationForStop(bestStation, vehicle, business);
 
   if (!bestStation) {
     return {
@@ -84,10 +87,11 @@ export function recommendFuelStop(
       expectedSavings: 0,
       latitude: 0,
       longitude: 0,
-      gallonsNeeded,
+      gallonsNeeded: prediction.estimatedGallonsNeeded,
       expectedCostOfWaiting: 0,
       bestStation: null,
       evaluations: [],
+      prediction,
     };
   }
 
@@ -101,13 +105,38 @@ export function recommendFuelStop(
     expectedSavings,
     latitude: bestStation.station.latitude,
     longitude: bestStation.station.longitude,
-    gallonsNeeded,
+    gallonsNeeded: prediction.estimatedGallonsNeeded,
     expectedCostOfWaiting,
     bestStation,
     evaluations,
+    prediction,
   };
 }
 
-export function googleMapsDirectionsUrl(latitude: number, longitude: number): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+export function recommendationForStop(
+  evaluation: StationEvaluation | null,
+  vehicle: VehicleInputs,
+  business: BusinessInputs,
+): DecisionResult["recommendation"] {
+  if (!evaluation) {
+    return "DO_NOT_ADD_STOP";
+  }
+  if (vehicle.currentFuelPercent < vehicle.emergencyFuelPercent) {
+    return "ADD_STOP";
+  }
+  if (evaluation.expectedNetValue >= business.minimumSavingsThreshold) {
+    return "ADD_STOP";
+  }
+  return "DO_NOT_ADD_STOP";
+}
+
+export function googleMapsDirectionsUrl(args: {
+  origin: GeoPoint;
+  station: GeoPoint;
+  destination: GeoPoint;
+}): string {
+  const origin = `${args.origin.latitude},${args.origin.longitude}`;
+  const station = `${args.station.latitude},${args.station.longitude}`;
+  const destination = `${args.destination.latitude},${args.destination.longitude}`;
+  return `https://www.google.com/maps/dir/${origin}/${station}/${destination}`;
 }
