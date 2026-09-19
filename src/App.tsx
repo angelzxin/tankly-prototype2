@@ -10,6 +10,7 @@ import {
   IconCar,
   IconChart,
   IconMap,
+  IconSliders,
   IconSearch,
   IconSpeaker,
   TanklyMark,
@@ -236,23 +237,25 @@ export default function App() {
                 <IconMap />
               </button>
               {developerMode && (
-                <button
-                  type="button"
-                  aria-label="Weekly forecast"
-                  className={screen === "forecast" ? "active" : ""}
-                  onClick={() => setScreen("forecast")}
-                >
-                  <IconChart />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    aria-label="Weekly forecast"
+                    className={screen === "forecast" ? "active" : ""}
+                    onClick={() => setScreen("forecast")}
+                  >
+                    <IconChart />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Model inputs"
+                    className={screen === "vehicle" ? "active" : ""}
+                    onClick={() => setScreen("vehicle")}
+                  >
+                    <IconSliders />
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                aria-label="Vehicle"
-                className={screen === "vehicle" ? "active" : ""}
-                onClick={() => setScreen("vehicle")}
-              >
-                <IconCar />
-              </button>
             </nav>
           )}
           <button type="button" className="apps-btn" aria-label="All apps">
@@ -263,7 +266,15 @@ export default function App() {
               type="button"
               className={`dev-toggle ${developerMode ? "on" : ""}`}
               aria-pressed={developerMode}
-              onClick={() => setDeveloperMode((current) => !current)}
+              onClick={() => {
+                setDeveloperMode((current) => {
+                  const next = !current;
+                  if (!next && (screen === "vehicle" || screen === "forecast")) {
+                    setScreen("map");
+                  }
+                  return next;
+                });
+              }}
             >
               Developer
             </button>
@@ -324,13 +335,12 @@ export default function App() {
                   onAddStop={handleAddStop}
                 />
               )}
-              {screen === "vehicle" && (
+              {developerMode && screen === "vehicle" && (
                 <VehicleCard
                   vehicle={vehicle}
                   business={business}
                   trip={trip}
                   origin={origin}
-                  developerMode={developerMode}
                   onVehicleChange={setVehicle}
                   onBusinessChange={setBusiness}
                   onTripChange={setTrip}

@@ -7,7 +7,6 @@ type Props = {
   business: BusinessInputs;
   trip: TripInputs;
   origin: GeoPoint;
-  developerMode: boolean;
   onVehicleChange: (next: VehicleInputs) => void;
   onBusinessChange: (next: BusinessInputs) => void;
   onTripChange: (next: TripInputs) => void;
@@ -20,7 +19,6 @@ export function VehicleCard({
   business,
   trip,
   origin,
-  developerMode,
   onVehicleChange,
   onBusinessChange,
   onTripChange,
@@ -31,14 +29,17 @@ export function VehicleCard({
     <article className="card card-vehicle">
       <div className="card-head">
         <div>
-          <p className="kicker kicker-green">Your vehicle</p>
-          <h2>{developerMode ? "Model inputs" : "Fuel level"}</h2>
+          <p className="kicker kicker-green">Developer</p>
+          <h2>Model inputs</h2>
         </div>
         <button type="button" className="close-light" aria-label="Close" onClick={onClose}>
           <IconClose />
         </button>
       </div>
-
+      <p className="developer-note">
+        Simulation / debug only. currentFuelPercent still feeds decisionEngine; drivers never enter
+        it.
+      </p>
       <div className="vehicle-grid">
         <Field
           label="Fuel level"
@@ -46,118 +47,103 @@ export function VehicleCard({
           value={vehicle.currentFuelPercent}
           onChange={(currentFuelPercent) => onVehicleChange({ ...vehicle, currentFuelPercent })}
         />
-        {developerMode && (
-          <>
-            <Field
-              label="Tank"
-              suffix="gal"
-              value={vehicle.tankCapacityGallons}
-              onChange={(tankCapacityGallons) =>
-                onVehicleChange({ ...vehicle, tankCapacityGallons })
-              }
-            />
-            <Field
-              label="MPG"
-              suffix="mpg"
-              value={vehicle.mpg}
-              onChange={(mpg) => onVehicleChange({ ...vehicle, mpg })}
-            />
-            <Field
-              label="Driver time"
-              suffix="$/hr"
-              value={vehicle.driverHourlyCost}
-              onChange={(driverHourlyCost) =>
-                onVehicleChange({ ...vehicle, driverHourlyCost })
-              }
-            />
-            <Field
-              label="Vehicle"
-              suffix="$/mi"
-              value={vehicle.vehicleOperatingCostPerMile}
-              onChange={(vehicleOperatingCostPerMile) =>
-                onVehicleChange({ ...vehicle, vehicleOperatingCostPerMile })
-              }
-            />
-            <Field
-              label="Min save"
-              suffix="$"
-              value={business.minimumSavingsThreshold}
-              onChange={(minimumSavingsThreshold) =>
-                onBusinessChange({ ...business, minimumSavingsThreshold })
-              }
-            />
-          </>
-        )}
+        <Field
+          label="Tank"
+          suffix="gal"
+          value={vehicle.tankCapacityGallons}
+          onChange={(tankCapacityGallons) =>
+            onVehicleChange({ ...vehicle, tankCapacityGallons })
+          }
+        />
+        <Field
+          label="MPG"
+          suffix="mpg"
+          value={vehicle.mpg}
+          onChange={(mpg) => onVehicleChange({ ...vehicle, mpg })}
+        />
+        <Field
+          label="Driver time"
+          suffix="$/hr"
+          value={vehicle.driverHourlyCost}
+          onChange={(driverHourlyCost) => onVehicleChange({ ...vehicle, driverHourlyCost })}
+        />
+        <Field
+          label="Vehicle"
+          suffix="$/mi"
+          value={vehicle.vehicleOperatingCostPerMile}
+          onChange={(vehicleOperatingCostPerMile) =>
+            onVehicleChange({ ...vehicle, vehicleOperatingCostPerMile })
+          }
+        />
+        <Field
+          label="Min save"
+          suffix="$"
+          value={business.minimumSavingsThreshold}
+          onChange={(minimumSavingsThreshold) =>
+            onBusinessChange({ ...business, minimumSavingsThreshold })
+          }
+        />
+        <Field
+          label="Emergency threshold"
+          suffix="%"
+          value={vehicle.emergencyFuelPercent}
+          onChange={(emergencyFuelPercent) =>
+            onVehicleChange({ ...vehicle, emergencyFuelPercent })
+          }
+        />
+        <Field
+          label="Current latitude"
+          suffix="lat"
+          value={origin.latitude}
+          onChange={(latitude) => onOriginChange({ ...origin, latitude })}
+        />
+        <Field
+          label="Current longitude"
+          suffix="lng"
+          value={origin.longitude}
+          onChange={(longitude) => onOriginChange({ ...origin, longitude })}
+        />
+        <Field
+          label="Miles left"
+          suffix="mi"
+          value={trip.remainingMiles}
+          onChange={(remainingMiles) => onTripChange({ ...trip, remainingMiles })}
+        />
+        <Field
+          label="Time left"
+          suffix="min"
+          value={trip.remainingMinutes}
+          onChange={(remainingMinutes) => onTripChange({ ...trip, remainingMinutes })}
+        />
+        <Field
+          label="Traffic multiplier"
+          suffix="x"
+          value={trip.trafficMultiplier}
+          onChange={(trafficMultiplier) => onTripChange({ ...trip, trafficMultiplier })}
+        />
+        <Field
+          label="Future price"
+          suffix="$/gal"
+          value={trip.expectedFuturePricePerGallon}
+          onChange={(expectedFuturePricePerGallon) =>
+            onTripChange({ ...trip, expectedFuturePricePerGallon })
+          }
+        />
+        <Field
+          label="Destination lat"
+          suffix="lat"
+          value={trip.destinationLatitude}
+          onChange={(destinationLatitude) => onTripChange({ ...trip, destinationLatitude })}
+        />
+        <Field
+          label="Destination lng"
+          suffix="lng"
+          value={trip.destinationLongitude}
+          onChange={(destinationLongitude) =>
+            onTripChange({ ...trip, destinationLongitude })
+          }
+        />
       </div>
-
-      {developerMode && (
-        <details className="developer-panel" open>
-          <summary>Developer Controls</summary>
-          <p className="developer-note">Simulation / debug only. Same values the engines already use.</p>
-          <div className="vehicle-grid">
-            <Field
-              label="Emergency threshold"
-              suffix="%"
-              value={vehicle.emergencyFuelPercent}
-              onChange={(emergencyFuelPercent) =>
-                onVehicleChange({ ...vehicle, emergencyFuelPercent })
-              }
-            />
-            <Field
-              label="Current latitude"
-              suffix="lat"
-              value={origin.latitude}
-              onChange={(latitude) => onOriginChange({ ...origin, latitude })}
-            />
-            <Field
-              label="Current longitude"
-              suffix="lng"
-              value={origin.longitude}
-              onChange={(longitude) => onOriginChange({ ...origin, longitude })}
-            />
-            <Field
-              label="Miles left"
-              suffix="mi"
-              value={trip.remainingMiles}
-              onChange={(remainingMiles) => onTripChange({ ...trip, remainingMiles })}
-            />
-            <Field
-              label="Time left"
-              suffix="min"
-              value={trip.remainingMinutes}
-              onChange={(remainingMinutes) => onTripChange({ ...trip, remainingMinutes })}
-            />
-            <Field
-              label="Traffic multiplier"
-              suffix="x"
-              value={trip.trafficMultiplier}
-              onChange={(trafficMultiplier) => onTripChange({ ...trip, trafficMultiplier })}
-            />
-            <Field
-              label="Future price"
-              suffix="$/gal"
-              value={trip.expectedFuturePricePerGallon}
-              onChange={(expectedFuturePricePerGallon) =>
-                onTripChange({ ...trip, expectedFuturePricePerGallon })
-              }
-            />
-            <Field
-              label="Destination lat"
-              suffix="lat"
-              value={trip.destinationLatitude}
-              onChange={(destinationLatitude) => onTripChange({ ...trip, destinationLatitude })}
-            />
-            <Field
-              label="Destination lng"
-              suffix="lng"
-              value={trip.destinationLongitude}
-              onChange={(destinationLongitude) =>
-                onTripChange({ ...trip, destinationLongitude })
-              }
-            />
-          </div>
-        </details>
-      )}
     </article>
   );
 }
