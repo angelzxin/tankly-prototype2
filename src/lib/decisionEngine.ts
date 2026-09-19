@@ -1,6 +1,7 @@
+import { estimateCostOfWaiting } from "./estimateCostOfWaiting";
+import { futurePriceForHorizon, type GasPriceForecast } from "./gasPriceForecast";
 import { predictFuelNeed } from "./predictionEngine";
 import { predictFuelPrice } from "./predictFuelPrice";
-import type { GeoPoint } from "./geo";
 import type {
   BusinessInputs,
   DecisionResult,
@@ -58,8 +59,9 @@ export function recommendFuelStop(
   vehicle: VehicleInputs,
   business: BusinessInputs,
   trip: TripInputs,
+  forecast: GasPriceForecast,
 ): DecisionResult {
-  const prediction = predictFuelNeed(vehicle, trip, stations);
+  const prediction = predictFuelNeed(vehicle, trip, stations, forecast);
   const evaluations = stations.map((station) =>
     evaluateStation(station, prediction, business),
   );
@@ -71,8 +73,10 @@ export function recommendFuelStop(
           current.expectedNetValue > best.expectedNetValue ? current : best,
         );
 
-  const expectedCostOfWaiting =
-    prediction.expectedFuturePricePerGallon * prediction.estimatedGallonsNeeded;
+  const expectedCostOfWaiting = estimateCostOfWaiting({
+    gallonsNeeded: prediction.estimatedGallonsNeeded,
+    futurePricePerGallon: futurePriceForHorizon(forecast, trip.remainingMinutes),
+  });
   const expectedSavings = bestStation?.expectedNetValue ?? 0;
   const recommendation = recommendationForStop(bestStation, vehicle, business);
 
@@ -113,6 +117,12 @@ export function recommendFuelStop(
   };
 }
 
+export function shouldShowAddStopCta(
+  recommendation: DecisionResult["recommendation"],
+): boolean {
+  return recommendation === "ADD_STOP";
+}
+
 export function recommendationForStop(
   evaluation: StationEvaluation | null,
   vehicle: VehicleInputs,
@@ -128,15 +138,4 @@ export function recommendationForStop(
     return "ADD_STOP";
   }
   return "DO_NOT_ADD_STOP";
-}
-
-export function googleMapsDirectionsUrl(args: {
-  origin: GeoPoint;
-  station: GeoPoint;
-  destination: GeoPoint;
-}): string {
-  const origin = `${args.origin.latitude},${args.origin.longitude}`;
-  const station = `${args.station.latitude},${args.station.longitude}`;
-  const destination = `${args.destination.latitude},${args.destination.longitude}`;
-  return `https://www.google.com/maps/dir/${origin}/${station}/${destination}`;
 }

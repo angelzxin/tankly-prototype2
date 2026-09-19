@@ -618,6 +618,31 @@ button:focus-visible {
   color: rgba(0, 0, 0, 0.6);
 }
 
+.keep-driving {
+  margin-top: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 16px 20px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.location-status {
+  position: absolute;
+  left: 16px;
+  top: 76px;
+  z-index: 20;
+  margin: 0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #133f3b;
+  box-shadow: 0 5px 20px #32322c24;
+}
+
 .save-hero {
   margin-top: 8px;
   font-size: 34px;

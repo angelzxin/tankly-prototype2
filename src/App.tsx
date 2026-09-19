@@ -13,7 +13,9 @@ import {
   IconSpeaker,
   TanklyMark,
 } from "./components/icons";
-import { googleMapsDirectionsUrl, recommendFuelStop, recommendationForStop } from "./lib/decisionEngine";
+import { recommendFuelStop, recommendationForStop, shouldShowAddStopCta } from "./lib/decisionEngine";
+import { mockGasPriceForecast } from "./lib/gasPriceForecast";
+import { googleMapsDirectionsUrl } from "./lib/maps";
 import { getDataSource, getNearbyStations, type GeoPoint } from "./lib/stations";
 import type { BusinessInputs, Station, TripInputs, VehicleInputs } from "./types";
 
@@ -33,16 +35,16 @@ const defaultBusiness: BusinessInputs = {
 };
 
 const defaultOrigin: GeoPoint = {
-  latitude: 40.2171,
-  longitude: -74.7429,
+  latitude: 35.99403,
+  longitude: -78.89862,
 };
 
 const defaultTrip: TripInputs = {
-  destinationName: "Philadelphia, PA",
-  destinationLatitude: 39.9526,
-  destinationLongitude: -75.1652,
-  remainingMiles: 18.2,
-  remainingMinutes: 34,
+  destinationName: "Raleigh, NC",
+  destinationLatitude: 35.7796,
+  destinationLongitude: -78.6382,
+  remainingMiles: 22.4,
+  remainingMinutes: 32,
   trafficMultiplier: 1.15,
   expectedFuturePricePerGallon: 3.79,
 };
@@ -57,7 +59,33 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("map");
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [opportunityDismissed, setOpportunityDismissed] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<"loading" | "ready">("loading");
+  const [hasDeviceLocation, setHasDeviceLocation] = useState(false);
   const dataSource = getDataSource();
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setHasDeviceLocation(false);
+      setLocationStatus("ready");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOrigin({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setHasDeviceLocation(true);
+        setLocationStatus("ready");
+      },
+      () => {
+        setHasDeviceLocation(false);
+        setLocationStatus("ready");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,9 +112,19 @@ export default function App() {
     };
   }, [origin.latitude, origin.longitude, dataSource]);
 
+  const forecast = useMemo(
+    () =>
+      mockGasPriceForecast({
+        stations,
+        expectedFuturePricePerGallon: trip.expectedFuturePricePerGallon,
+        trafficMultiplier: trip.trafficMultiplier,
+      }),
+    [stations, trip.expectedFuturePricePerGallon, trip.trafficMultiplier],
+  );
+
   const decision = useMemo(
-    () => recommendFuelStop(stations, vehicle, business, trip),
-    [stations, vehicle, business, trip],
+    () => recommendFuelStop(stations, vehicle, business, trip, forecast),
+    [stations, vehicle, business, trip, forecast],
   );
 
   useEffect(() => {
@@ -122,9 +160,10 @@ export default function App() {
   );
 
   const showDrivingAlert =
+    locationStatus === "ready" &&
     Boolean(selectedEvaluation) &&
-    (screen === "alert" ||
-      (screen === "map" && decision.recommendation === "ADD_STOP" && !opportunityDismissed));
+    !opportunityDismissed &&
+    (screen === "map" || screen === "alert");
 
   function openStation(stationId: string) {
     setSelectedStationId(stationId);
@@ -133,13 +172,13 @@ export default function App() {
   }
 
   function handleAddStop() {
-    if (!selectedEvaluation) {
+    if (!selectedEvaluation || !shouldShowAddStopCta(selectedRecommendation)) {
       return;
     }
     window.open(
       googleMapsDirectionsUrl({
-        origin,
-        station: {
+        origin: hasDeviceLocation ? origin : null,
+        waypoint: {
           latitude: selectedEvaluation.station.latitude,
           longitude: selectedEvaluation.station.longitude,
         },
@@ -163,7 +202,10 @@ export default function App() {
             type="button"
             className="logo-btn"
             aria-label="Tankly home"
-            onClick={() => setScreen("map")}
+            onClick={() => {
+              setOpportunityDismissed(false);
+              setScreen("map");
+            }}
           >
             <TanklyMark />
           </button>
@@ -226,7 +268,9 @@ export default function App() {
             </div>
           </div>
 
-          {screen === "forecast" && <OutlookCard onClose={() => setScreen("map")} />}
+          {screen === "forecast" && (
+            <OutlookCard forecast={forecast} onClose={() => setScreen("map")} />
+          )}
           {screen === "nearby" && (
             <NearbyFuelCard
               evaluations={decision.evaluations}
@@ -260,6 +304,9 @@ export default function App() {
             />
           )}
 
+          {locationStatus === "loading" && (
+            <p className="location-status">Finding your location…</p>
+          )}
           {loadError && <p className="map-error">{loadError}</p>}
 
           <div className="trip-pill">

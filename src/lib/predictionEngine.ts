@@ -1,3 +1,4 @@
+import { futurePriceForHorizon, type GasPriceForecast } from "./gasPriceForecast";
 import type { FuelPrediction, Station, TripInputs, VehicleInputs } from "../types";
 
 function clamp(value: number, min: number, max: number): number {
@@ -20,6 +21,7 @@ export function predictFuelNeed(
   vehicle: VehicleInputs,
   trip: TripInputs,
   stations: Station[],
+  forecast: GasPriceForecast,
 ): FuelPrediction {
   const trafficMultiplier = Math.max(trip.trafficMultiplier, 0.2);
   const effectiveMpg = vehicle.mpg / trafficMultiplier;
@@ -39,7 +41,7 @@ export function predictFuelNeed(
     0.97,
   );
 
-  const expectedFuturePricePerGallon = trip.expectedFuturePricePerGallon;
+  const expectedFuturePricePerGallon = futurePriceForHorizon(forecast, trip.remainingMinutes);
   const avgPrice = averageStationPrice(stations);
   const priceGap = Math.max(0, expectedFuturePricePerGallon - avgPrice);
   const futureOpportunityRisk = clamp(

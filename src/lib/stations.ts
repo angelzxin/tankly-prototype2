@@ -1,6 +1,6 @@
 import { MOCK_STATIONS } from "../data/mockStations";
+import { estimateDetour, type GeoPoint } from "./geo";
 import { normalizeStations } from "./normalizeStations";
-import type { GeoPoint } from "./geo";
 import type { Station } from "../types";
 
 export type { GeoPoint };
@@ -74,10 +74,28 @@ async function fetchLiveStations(origin: GeoPoint): Promise<Station[]> {
   return stations;
 }
 
+function stationsForOrigin(origin: GeoPoint): Station[] {
+  return MOCK_STATIONS.map((station) => {
+    const detour = estimateDetour(origin, {
+      latitude: station.latitude,
+      longitude: station.longitude,
+    });
+    return {
+      ...station,
+      detourMiles: detour.detourMiles,
+      detourMinutes: detour.detourMinutes,
+    };
+  });
+}
+
 export async function getNearbyStations(origin: GeoPoint): Promise<Station[]> {
-  if (getDataSource() === "mock") {
-    return MOCK_STATIONS;
+  if (getDataSource() === "live") {
+    try {
+      return await fetchLiveStations(origin);
+    } catch {
+      return stationsForOrigin(origin);
+    }
   }
 
-  return fetchLiveStations(origin);
+  return stationsForOrigin(origin);
 }

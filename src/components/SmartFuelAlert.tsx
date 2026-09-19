@@ -1,4 +1,5 @@
 import { IconArrowUp, IconClose } from "./icons";
+import { shouldShowAddStopCta } from "../lib/decisionEngine";
 import type { FuelPrediction, Recommendation, StationEvaluation } from "../types";
 
 type Props = {
@@ -24,6 +25,7 @@ export function SmartFuelAlert({
   const firstName = evaluation.station.name.split("—")[0].trim();
   const chancePercent = Math.round(prediction.probabilityNeedFuelSoon * 100);
   const milesWindow = Math.max(1, Math.round(prediction.milesUntilLikelyRefuel));
+  const showAddStop = shouldShowAddStopCta(recommendation);
 
   return (
     <article className="card card-alert">
@@ -42,19 +44,25 @@ export function SmartFuelAlert({
         </div>
         <h1>Fill up at {firstName}</h1>
         <p className="sub">
-          {recommendation === "ADD_STOP"
+          {showAddStop
             ? "Best price on your route. Tankly recommends adding this stop."
-            : "A stop is optional. Expected net value is below your minimum threshold."}{" "}
+            : "Keep driving — waiting is currently better."}{" "}
           Tankly predicts a {chancePercent}% chance you'll need fuel within the next {milesWindow}{" "}
           miles.
         </p>
-        <button type="button" className="add-stop" onClick={onAddStop}>
-          <span>
-            <strong>Add stop</strong>
-            <span>{evaluation.station.detourMinutes.toFixed(0)} min detour</span>
-          </span>
-          <IconArrowUp />
-        </button>
+        {showAddStop ? (
+          <button type="button" className="add-stop" onClick={onAddStop}>
+            <span>
+              <strong>Add stop</strong>
+              <span>{evaluation.station.detourMinutes.toFixed(0)} min detour</span>
+            </span>
+            <IconArrowUp />
+          </button>
+        ) : (
+          <p className="keep-driving">
+            Keep driving — Tankly expects a better fueling opportunity later.
+          </p>
+        )}
       </div>
       <div className="alert-side">
         <div className="kicker kicker-muted">You'll save</div>
