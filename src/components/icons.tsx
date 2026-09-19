@@ -97,16 +97,6 @@ export function IconArrowUp() {
 
 export function TanklyMark() {
   return (
-    <svg viewBox="0 0 66 72" className="tankly-mark" aria-hidden="true">
-      <rect width="66" height="72" rx="15" fill="#eff7f4" />
-      <path
-        d="M33 16c8 8 14 16 14 26a14 14 0 1 1-28 0c0-10 6-18 14-26Z"
-        fill="#1d5651"
-      />
-      <path d="M33 28c3 4 5 8 5 12a5 5 0 1 1-10 0c0-4 2-8 5-12Z" fill="#43b69e" />
-      <text x="33" y="64" textAnchor="middle" fill="#123f3b" fontSize="10" fontWeight="700" fontFamily="Inter, sans-serif">
-        Tankly
-      </text>
-    </svg>
+    <img src="/IMG_0011.png" alt="Tankly" className="tankly-mark" />
   );
 }
