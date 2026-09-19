@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/inputspanel.tsx","./src/components/recommendationcard.tsx","./src/data/mockstations.ts","./src/lib/decisionengine.ts","./src/lib/estimatecostofwaiting.ts","./src/lib/predictfuelprice.ts","./src/lib/stations.ts"],"errors":true,"version":"5.7.3"}
