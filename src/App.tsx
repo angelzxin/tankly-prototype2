@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FleetDashboard } from "./components/FleetDashboard";
 import { MapBackground } from "./components/MapBackground";
 import { NearbyFuelCard } from "./components/NearbyFuelCard";
 import { OutlookCard } from "./components/OutlookCard";
@@ -17,36 +18,21 @@ import { recommendFuelStop, recommendationForStop, shouldShowAddStopCta } from "
 import { mockGasPriceForecast } from "./lib/gasPriceForecast";
 import { googleMapsDirectionsUrl } from "./lib/maps";
 import { getDataSource, getNearbyStations, type GeoPoint } from "./lib/stations";
+import { DRIVER_DEMO_TRIP, DRIVER_DEMO_VEHICLE } from "./data/mockFleet";
 import type { BusinessInputs, Station, TripInputs, VehicleInputs } from "./types";
 
 type Screen = "map" | "forecast" | "nearby" | "alert" | "vehicle";
+type DemoRole = "driver" | "fleet";
 
-const defaultVehicle: VehicleInputs = {
-  currentFuelPercent: 28,
-  tankCapacityGallons: 150,
-  mpg: 6.5,
-  emergencyFuelPercent: 15,
-};
-
+const defaultVehicle: VehicleInputs = DRIVER_DEMO_VEHICLE;
+const defaultTrip: TripInputs = DRIVER_DEMO_TRIP;
 const defaultBusiness: BusinessInputs = {
-  loadedLaborCostPerHour: 45,
-  vehicleCostPerMile: 1.85,
-  minimumSavingsThreshold: 15,
+  minimumSavingsThreshold: 1,
 };
 
 const defaultOrigin: GeoPoint = {
   latitude: 35.99403,
   longitude: -78.89862,
-};
-
-const defaultTrip: TripInputs = {
-  destinationName: "Raleigh, NC",
-  destinationLatitude: 35.7796,
-  destinationLongitude: -78.6382,
-  remainingMiles: 22.4,
-  remainingMinutes: 32,
-  trafficMultiplier: 1.15,
-  expectedFuturePricePerGallon: 3.79,
 };
 
 export default function App() {
@@ -61,6 +47,8 @@ export default function App() {
   const [opportunityDismissed, setOpportunityDismissed] = useState(false);
   const [locationStatus, setLocationStatus] = useState<"loading" | "ready">("loading");
   const [hasDeviceLocation, setHasDeviceLocation] = useState(false);
+  const [developerMode, setDeveloperMode] = useState(false);
+  const [demoRole, setDemoRole] = useState<DemoRole>("driver");
   const dataSource = getDataSource();
 
   useEffect(() => {
@@ -137,8 +125,8 @@ export default function App() {
     vehicle.currentFuelPercent,
     vehicle.mpg,
     vehicle.tankCapacityGallons,
-    business.loadedLaborCostPerHour,
-    business.vehicleCostPerMile,
+    vehicle.driverHourlyCost,
+    vehicle.vehicleOperatingCostPerMile,
     business.minimumSavingsThreshold,
     trip.remainingMiles,
     trip.remainingMinutes,
@@ -160,6 +148,7 @@ export default function App() {
   );
 
   const showDrivingAlert =
+    demoRole === "driver" &&
     locationStatus === "ready" &&
     Boolean(selectedEvaluation) &&
     !opportunityDismissed &&
@@ -196,6 +185,30 @@ export default function App() {
 
   return (
     <main className="stage">
+      <div className="role-switch" role="tablist" aria-label="Demo role">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={demoRole === "driver"}
+          className={demoRole === "driver" ? "on" : ""}
+          onClick={() => {
+            setDemoRole("driver");
+            setScreen("map");
+          }}
+        >
+          Driver
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={demoRole === "fleet"}
+          className={demoRole === "fleet" ? "on" : ""}
+          onClick={() => setDemoRole("fleet")}
+        >
+          Fleet Manager
+        </button>
+      </div>
+
       <section className="carplay">
         <aside className="rail">
           <button
@@ -209,38 +222,52 @@ export default function App() {
           >
             <TanklyMark />
           </button>
-          <nav className="rail-nav" aria-label="App navigation">
-            <button
-              type="button"
-              aria-label="Map"
-              className={nav === "map" ? "active" : ""}
-              onClick={() => {
-                setOpportunityDismissed(false);
-                setScreen("map");
-              }}
-            >
-              <IconMap />
-            </button>
-            <button
-              type="button"
-              aria-label="Weekly forecast"
-              className={screen === "forecast" ? "active" : ""}
-              onClick={() => setScreen("forecast")}
-            >
-              <IconChart />
-            </button>
-            <button
-              type="button"
-              aria-label="Vehicle"
-              className={screen === "vehicle" ? "active" : ""}
-              onClick={() => setScreen("vehicle")}
-            >
-              <IconCar />
-            </button>
-          </nav>
+          {demoRole === "driver" && (
+            <nav className="rail-nav" aria-label="App navigation">
+              <button
+                type="button"
+                aria-label="Map"
+                className={nav === "map" ? "active" : ""}
+                onClick={() => {
+                  setOpportunityDismissed(false);
+                  setScreen("map");
+                }}
+              >
+                <IconMap />
+              </button>
+              {developerMode && (
+                <button
+                  type="button"
+                  aria-label="Weekly forecast"
+                  className={screen === "forecast" ? "active" : ""}
+                  onClick={() => setScreen("forecast")}
+                >
+                  <IconChart />
+                </button>
+              )}
+              <button
+                type="button"
+                aria-label="Vehicle"
+                className={screen === "vehicle" ? "active" : ""}
+                onClick={() => setScreen("vehicle")}
+              >
+                <IconCar />
+              </button>
+            </nav>
+          )}
           <button type="button" className="apps-btn" aria-label="All apps">
             <IconApps />
           </button>
+          {demoRole === "driver" && (
+            <button
+              type="button"
+              className={`dev-toggle ${developerMode ? "on" : ""}`}
+              aria-pressed={developerMode}
+              onClick={() => setDeveloperMode((current) => !current)}
+            >
+              Developer
+            </button>
+          )}
           <div className="clock">
             <strong>9:41</strong>
             LTE
@@ -248,78 +275,86 @@ export default function App() {
         </aside>
 
         <div className="map-pane">
-          <MapBackground />
+          {demoRole === "fleet" ? (
+            <FleetDashboard />
+          ) : (
+            <>
+              <MapBackground />
 
-          <div className="map-top-left">
-            <button type="button" className="search-pill" onClick={() => setScreen("nearby")}>
-              <IconSearch />
-              <span>Find gas nearby</span>
-            </button>
-            <button type="button" className="round-pill" aria-label="Audio guidance">
-              <IconSpeaker />
-            </button>
-          </div>
+              <div className="map-top-left">
+                <button type="button" className="search-pill" onClick={() => setScreen("nearby")}>
+                  <IconSearch />
+                  <span>Find gas nearby</span>
+                </button>
+                <button type="button" className="round-pill" aria-label="Audio guidance">
+                  <IconSpeaker />
+                </button>
+              </div>
 
-          <div className="fuel-range">
-            <div>Fuel range</div>
-            <div>
-              <span className="dot" />
-              {fuelRangeMiles.toFixed(0)} mi
-            </div>
-          </div>
+              <div className="fuel-range">
+                <div>Fuel range</div>
+                <div>
+                  <span className="dot" />
+                  {fuelRangeMiles.toFixed(0)} mi
+                </div>
+              </div>
 
-          {screen === "forecast" && (
-            <OutlookCard forecast={forecast} onClose={() => setScreen("map")} />
-          )}
-          {screen === "nearby" && (
-            <NearbyFuelCard
-              evaluations={decision.evaluations}
-              onClose={() => setScreen("map")}
-              onSelect={openStation}
-            />
-          )}
-          {showDrivingAlert && selectedEvaluation && (
-            <SmartFuelAlert
-              evaluation={selectedEvaluation}
-              prediction={decision.prediction}
-              recommendation={selectedRecommendation}
-              onClose={() => {
-                setOpportunityDismissed(true);
-                setScreen("map");
-              }}
-              onAddStop={handleAddStop}
-            />
-          )}
-          {screen === "vehicle" && (
-            <VehicleCard
-              vehicle={vehicle}
-              business={business}
-              trip={trip}
-              origin={origin}
-              onVehicleChange={setVehicle}
-              onBusinessChange={setBusiness}
-              onTripChange={setTrip}
-              onOriginChange={setOrigin}
-              onClose={() => setScreen("map")}
-            />
-          )}
+              {screen === "forecast" && developerMode && (
+                <OutlookCard forecast={forecast} onClose={() => setScreen("map")} />
+              )}
+              {screen === "nearby" && (
+                <NearbyFuelCard
+                  evaluations={decision.evaluations}
+                  onClose={() => setScreen("map")}
+                  onSelect={openStation}
+                />
+              )}
+              {showDrivingAlert && selectedEvaluation && (
+                <SmartFuelAlert
+                  evaluation={selectedEvaluation}
+                  recommendation={selectedRecommendation}
+                  isLowestPriceOnRoute={decision.evaluations.every(
+                    (item) =>
+                      item.predictedPricePerGallon >= selectedEvaluation.predictedPricePerGallon,
+                  )}
+                  onClose={() => {
+                    setOpportunityDismissed(true);
+                    setScreen("map");
+                  }}
+                  onAddStop={handleAddStop}
+                />
+              )}
+              {screen === "vehicle" && (
+                <VehicleCard
+                  vehicle={vehicle}
+                  business={business}
+                  trip={trip}
+                  origin={origin}
+                  developerMode={developerMode}
+                  onVehicleChange={setVehicle}
+                  onBusinessChange={setBusiness}
+                  onTripChange={setTrip}
+                  onOriginChange={setOrigin}
+                  onClose={() => setScreen("map")}
+                />
+              )}
 
-          {locationStatus === "loading" && (
-            <p className="location-status">Finding your location…</p>
-          )}
-          {loadError && <p className="map-error">{loadError}</p>}
+              {locationStatus === "loading" && (
+                <p className="location-status">Finding your location…</p>
+              )}
+              {loadError && <p className="map-error">{loadError}</p>}
 
-          <div className="trip-pill">
-            <span className="trip-icon">
-              <IconCar />
-            </span>
-            <div>
-              <div className="trip-label">{trip.destinationName}</div>
-              <strong>
-                {trip.remainingMinutes.toFixed(0)} min · {trip.remainingMiles.toFixed(1)} mi
-              </strong>
-            </div>
-          </div>
+              <div className="trip-pill">
+                <span className="trip-icon">
+                  <IconCar />
+                </span>
+                <div>
+                  <div className="trip-label">{trip.destinationName}</div>
+                  <strong>Current trip</strong>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
     </main>

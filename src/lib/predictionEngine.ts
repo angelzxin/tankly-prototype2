@@ -1,3 +1,4 @@
+import { expectedGallonsPurchased } from "./economics";
 import { futurePriceForHorizon, type GasPriceForecast } from "./gasPriceForecast";
 import type { FuelPrediction, Station, TripInputs, VehicleInputs } from "../types";
 
@@ -26,12 +27,11 @@ export function predictFuelNeed(
   const trafficMultiplier = Math.max(trip.trafficMultiplier, 0.2);
   const effectiveMpg = vehicle.mpg / trafficMultiplier;
   const currentGallons = vehicle.tankCapacityGallons * (vehicle.currentFuelPercent / 100);
-  const emptyGallons = Math.max(
-    0,
-    vehicle.tankCapacityGallons * (1 - vehicle.currentFuelPercent / 100),
-  );
   const milesUntilLikelyRefuel = Math.max(0, currentGallons * effectiveMpg);
-  const estimatedGallonsNeeded = emptyGallons;
+  const estimatedGallonsNeeded = expectedGallonsPurchased(
+    vehicle.tankCapacityGallons,
+    vehicle.currentFuelPercent,
+  );
 
   const rangeRatio = trip.remainingMiles / Math.max(milesUntilLikelyRefuel, 1);
   const emergencyGap = (vehicle.emergencyFuelPercent - vehicle.currentFuelPercent) / 100;

@@ -13,7 +13,7 @@ function money(value: number) {
 }
 
 export function NearbyFuelCard({ evaluations, onClose, onSelect }: Props) {
-  const ranked = [...evaluations].sort((a, b) => b.expectedNetValue - a.expectedNetValue);
+  const ranked = [...evaluations].sort((a, b) => b.netValue - a.netValue);
 
   return (
     <article className="card card-nearby">
@@ -45,7 +45,7 @@ export function NearbyFuelCard({ evaluations, onClose, onSelect }: Props) {
                   {evaluation.station.detourMiles.toFixed(1)} mi
                 </span>
               </strong>
-              <em>Save {money(evaluation.expectedNetValue)}</em>
+              <em>Save {money(evaluation.netValue)}</em>
             </span>
             <b>${evaluation.predictedPricePerGallon.toFixed(2)}</b>
             <IconChevron />

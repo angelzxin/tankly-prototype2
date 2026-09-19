@@ -10,18 +10,28 @@ export type Station = {
   detourMiles: number;
 };
 
+export type VehicleClass = "sedan" | "suv" | "van";
+
 export type VehicleInputs = {
   currentFuelPercent: number;
   tankCapacityGallons: number;
   mpg: number;
   emergencyFuelPercent: number;
+  /** USD per hour of driver time. */
+  driverHourlyCost: number;
+  /** USD per mile of vehicle operating cost. */
+  vehicleOperatingCostPerMile: number;
 };
 
 export type BusinessInputs = {
-  loadedLaborCostPerHour: number;
-  vehicleCostPerMile: number;
   minimumSavingsThreshold: number;
 };
+
+export type FleetVehicleStatus =
+  | "Driving"
+  | "Stop recommended"
+  | "Refueling"
+  | "No action needed";
 
 export type TripInputs = {
   destinationName: string;
@@ -41,17 +51,40 @@ export type FuelPrediction = {
   futureOpportunityRisk: number;
 };
 
+/** Canonical Tankly economics for one recommended stop. All money fields are USD. */
+export type TanklyDecision = {
+  fuelPriceAdvantage: number;
+  driverTimeCost: number;
+  vehicleDetourCost: number;
+  waitingCostAvoided: number;
+  netValue: number;
+  recommendedStation: Station | null;
+  reason: string;
+  headline: string;
+  customerRecommendation: string;
+  shouldAddStop: boolean;
+  expectedGallonsPurchased: number;
+  expectedAlternativeFuelPrice: number;
+  recommendedStationPrice: number;
+  waitingReason: string;
+};
+
 export type StationEvaluation = {
   station: Station;
   predictedPricePerGallon: number;
   gallonsNeeded: number;
   fuelCost: number;
+  fuelPriceAdvantage: number;
   fuelPriceSavings: number;
   driverTimeCost: number;
   vehicleDetourCost: number;
+  waitingCostAvoided: number;
   waitingRiskAdjustment: number;
   expectedNetValue: number;
+  netValue: number;
   expectedStopCost: number;
+  expectedAlternativeFuelPrice: number;
+  waitingReason: string;
 };
 
 export type DecisionResult = {
@@ -69,4 +102,5 @@ export type DecisionResult = {
   bestStation: StationEvaluation | null;
   evaluations: StationEvaluation[];
   prediction: FuelPrediction;
+  tankly: TanklyDecision;
 };
