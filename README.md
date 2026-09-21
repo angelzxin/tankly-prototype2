@@ -7,6 +7,7 @@ Tankly is a fuel-stop optimization tool that predicts fuel prices and determines
 1. Clone the repository
 
 git clone git@github.com:angelzxin/tankly-prototype2.git
+
 cd tankly-prototype2
 
 2. Install dependencies
@@ -23,24 +24,29 @@ Open the local URL shown in Terminal (usually http://localhost:5173).
 
 npm run build
 
-How It Works
+# How It Works
 
-Trip + Fuel Data
-       ↓
-Fuel Price Prediction
-       ↓
-Decision Engine
-       ↓
-ADD_STOP / NO_ACTION
-       ↓
-Google Maps Routing
+Trip + Fuel Data → Price Prediction Layer → Cost Estimation Layer → Decision Engine → ADD_STOP / NO_ACTION → Google Maps Routing
 
 Tankly compares potential fuel savings against detour time, driver labor cost, vehicle cost, and expected future fuel prices.
+
+# Prediction Layers
+
+1. Fuel Price Prediction
+Forecasts future local gas prices using historical price data and contextual features.
+
+2. Stop Cost Estimation 
+Calculates detour, labor, vehicle, and refueling costs.
+
+3. Decision Engine
+Compares the expected cost of stopping now vs. waiting and returns ADD_STOP or NO_ACTION.
 
 # Update & Deploy
 
 git add .
+
 git commit -m "Update Tankly"
+
 git push origin main
 
 Vercel automatically redeploys the latest version from main.
