@@ -1,23 +1,54 @@
 # Tankly
 
-B2B fleet fuel-stop prototype.
+Tankly is a fuel-stop optimization tool that predicts fuel prices and determines whether stopping for gas is worth the time and cost.
 
-## Run
+# Run Locally
 
-```bash
+1. Clone the repository
+
+git clone git@github.com:angelzxin/tankly-prototype2.git
+cd tankly-prototype2
+
+2. Install dependencies
+
 npm install
+
+3. Run the app
+
 npm run dev
-```
 
-Open the local URL Vite prints (usually `http://localhost:5173`).
+Open the local URL shown in Terminal (usually http://localhost:5173).
 
-## Data source
+# Production Build
 
-`VITE_DATA_SOURCE=mock` uses the built-in stations in `src/data/mockStations.ts`.
+npm run build
 
-`VITE_DATA_SOURCE=live` fetches nearby stations and prices from the fuel API in `.env`:
+How It Works
 
-- `VITE_FUEL_PRICE_API_KEY`
-- `VITE_FUEL_PRICE_API_BASE_URL`
+Trip + Fuel Data
+       ↓
+Fuel Price Prediction
+       ↓
+Decision Engine
+       ↓
+ADD_STOP / NO_ACTION
+       ↓
+Google Maps Routing
 
-Dev requests go through `/api/fuel-live` so the browser does not hit CORS. Detour miles/minutes are estimated from straight-line distance until a routing API is wired.
+Tankly compares potential fuel savings against detour time, driver labor cost, vehicle cost, and expected future fuel prices.
+
+# Update & Deploy
+
+git add .
+git commit -m "Update Tankly"
+git push origin main
+
+Vercel automatically redeploys the latest version from main.
+
+# Tech Stack
+
+React · TypeScript · Vite · Fuel Price Forecasting · Google Maps · Vercel
+
+# Live Prototype
+
+https://tankly-prototype.vercel.app/
